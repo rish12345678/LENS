@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/rishabmadhugiri/Documents/Code/Practice/C++_Practice/RBuffer",
+      "program": "/Users/rishabmadhugiri/Documents/Code/Practice/C++_Practice/RBuffer/build/Debug/outDebug"
+    }
+  ]
+}
