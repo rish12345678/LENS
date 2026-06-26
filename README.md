@@ -12,4 +12,18 @@ Lastly, and most efficiently, we can simply move the value into a returnable std
 
 ## Costless Simplicity of the RingBuffer's Advance Pointer Helper Method
 
-Advance pointer is a simple private helper method in the RingBuffer class that takes in a pointer by reference and increments it accounting for the buffer's wraparound.
+Advance pointer is a simple private helper method in the RingBuffer class that takes in a T pointer by reference and increments it accounting for the buffer's wraparound. This helper method is extremely efficient for three reasons.
+
+1. The function is extremely useful in that we can use it to do a simple pointer incrementation that makes the ring buffer seem like a basic array with no wraparound, keeping the code in other functions small and easy to read.
+2. Due to the simplicity and length of the function, compiler optimizations can actually inline the function, killing function call overhead, simply executing the corresponding set of instructions in place of the function call.
+3. The creation of the extraneous T\* is created on the stack and potentially with compiler optimizations will just be loaded into a register causing essentially zero perfromance hit.
+
+## How To Get The RingBuffer To Single-Threaded to SPSC Thread-Safe
+
+We face two problems that cause our base RingBuffer impl to fall short when operated on multiple threads, one for the producer and one for the consumer:
+
+1. When the producer thread advances its position, that location update is only set in its local cache first, and only later updated in the consumer core's cache, so the producer might be way ahead of the consumer, and the consumer doesn't even know so it doesn't get waken up yet.
+
+2. The compiler's instruction reordering to optimize performance, can cause citical sections to execute out of order, such as pushing the pointer forward and then updating the value at its previous location, even though we designed it specifically not to behave that way, as it could cause the consumer to wake up and read the nonsense value in that location that hasn't been updated yet.
+
+One is a performance issue of the consumer not seeing updates quickly enough and falling behind, the other is a correctness issue of the consumer interleaving its reads with the producer's out of order execution of its writes.

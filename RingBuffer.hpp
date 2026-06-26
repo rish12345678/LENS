@@ -3,6 +3,7 @@
 #include <array>
 #include <new>
 #include <optional>
+#include <atomic>
 
 template <typename T>
 class RingBuffer
@@ -15,21 +16,27 @@ private:
     // buffer array and pointers for producer and consumer
     std::array<T, 64> main_arr{{}};
     T *push_ptr_ = main_arr.data();
-    T *pop_ptr_ = main_arr.data();
-    T *base_ptr_ = main_arr.data();
+    alignas(std::hardware_destructive_interference_size) std::atomic<T *> pop_ptr_{main_arr.data()};
+    alignas(std::hardware_destructive_interference_size) std::atomic<T *> push_ptr_{main_arr.data()};
 
     // Helper function to move the input pointer forward
-    void advancePointer(T *&ptr)
+    void advancePointer(const T *&ptr, const int ptr_type)
     {
-        if (ptr + 1 == base_ptr_ + capacity)
-            ptr = base_ptr_;
+        if (ptr_type == 1)
+        { // push_ptr_
+            if (ptr + 1 == base_ptr_ + capacity)
+                ptr.store(base_ptr_);
+            else
+                ptr.store(ptr + 1);
+        }
         else
-            ptr++;
+        { // pop_ptr_
+            
+        }
     }
 
 public:
-    // Helper functions to check invariants
-    bool is_full()
+    [[nodiscard]] bool is_full()
     {
         // Simply check if the pointer after push_ptr is pop_ptr
         T *next_push = push_ptr_;
@@ -37,7 +44,7 @@ public:
         return next_push == pop_ptr_;
     }
 
-    bool is_empty()
+    [[nodiscard]] bool is_empty()
     {
         return push_ptr_ == pop_ptr_;
     }
@@ -52,7 +59,7 @@ public:
         // Critical section
         (*push_ptr_) = push_val; // Place input T in queue
 
-        advancePointer(push_ptr_);
+        advancePointer(push_ptr_, 1);
         // Section Ends
 
         // Return Status
