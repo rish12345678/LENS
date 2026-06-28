@@ -15,33 +15,26 @@ private:
     const int capacity = 64;
     // buffer array and pointers for producer and consumer
     std::array<T, 64> main_arr{{}};
-    T *push_ptr_ = main_arr.data();
+    T *base_ptr_ = main_arr.data();
     alignas(std::hardware_destructive_interference_size) std::atomic<T *> pop_ptr_{main_arr.data()};
     alignas(std::hardware_destructive_interference_size) std::atomic<T *> push_ptr_{main_arr.data()};
 
-    // Helper function to move the input pointer forward
-    void advancePointer(const T *&ptr, const int ptr_type)
+    // Helper function to return the address of the next
+    // location the pointer should move to, given its current address
+    [[nodiscard]] inline T *getNextPointer(T *current_ptr) const
     {
-        if (ptr_type == 1)
-        { // push_ptr_
-            if (ptr + 1 == base_ptr_ + capacity)
-                ptr.store(base_ptr_);
-            else
-                ptr.store(ptr + 1);
-        }
+        if (current_ptr + 1 == base_ptr_ + capacity)
+            return base_ptr_;
         else
-        { // pop_ptr_
-            
-        }
+            return current_ptr + 1;
     }
 
 public:
     [[nodiscard]] bool is_full()
     {
-        // Simply check if the pointer after push_ptr is pop_ptr
-        T *next_push = push_ptr_;
-        advancePointer(next_push);
-        return next_push == pop_ptr_;
+        // Use acquire to see where consumer's pop_ptr_ is
+        T *next_push = getNextPointer(push_ptr_.load(std::memory_order_relaxed));
+        return next_push == pop_ptr_.load(std::memory_order_acquire);
     }
 
     [[nodiscard]] bool is_empty()

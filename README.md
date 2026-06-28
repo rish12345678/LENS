@@ -27,3 +27,7 @@ We face two problems that cause our base RingBuffer impl to fall short when oper
 2. The compiler's instruction reordering to optimize performance, can cause citical sections to execute out of order, such as pushing the pointer forward and then updating the value at its previous location, even though we designed it specifically not to behave that way, as it could cause the consumer to wake up and read the nonsense value in that location that hasn't been updated yet.
 
 One is a performance issue of the consumer not seeing updates quickly enough and falling behind, the other is a correctness issue of the consumer interleaving its reads with the producer's out of order execution of its writes.
+
+## Change From Concurrnecy Computation Heavy advancePointer() method to purely computational getNextPtr() method
+
+Instead of advancing the pointer in the method, and taking care of memory ordering / thread safety there, where we also need to pass in a flag for the type fo the pointer, we make make a simpler inline function that is not too heavy and allows users to do a simple next address retrieval, and then handle the write and read pointer location updating inside the method dedicates for each.
